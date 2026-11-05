@@ -24,19 +24,35 @@ export const listAvailabilty = async (req, res) => {
 
 export const saveAvailability = async (req, res) => {
   try {
-    const { dayofWeek, slots } = req.body;
+    const dayofWeek = Number(req.body.dayofWeek);
+    const { slots } = req.body;
 
-    if (dayofWeek === undefined || dayofWeek < 0 || dayofWeek > 6) {
+    if (!Number.isInteger(dayofWeek) || dayofWeek < 0 || dayofWeek > 6) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Valid day of week is required",
       });
     }
 
-    const cleanedSlots = (slots || []).filter((slot) =>
-      slot.startTime &&
-      slot.endTime &&
-      isValidTimeRange(slot.startTime, slot.endTime)
-    );
+    if (!Array.isArray(slots)) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: "Slots must be a list" });
+    }
+    const cleanedSlots = slots.map((slot) => ({
+      startTime: String(slot?.startTime || ""),
+      endTime: String(slot?.endTime || ""),
+    }));
+    if (cleanedSlots.some((slot) => (
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(slot.startTime) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(slot.endTime) ||
+      !isValidTimeRange(slot.startTime, slot.endTime)
+    ))) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: "Every time window must have valid start and end times" });
+    }
+    cleanedSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    for (let index = 1; index < cleanedSlots.length; index += 1) {
+      if (cleanedSlots[index].startTime < cleanedSlots[index - 1].endTime) {
+        return res.status(StatusCodes.BAD_REQUEST).json({ message: "Availability windows cannot overlap" });
+      }
+    }
 
     const availability = await Availability.findOneAndUpdate(
       { userId: req.user?.id?.userId, dayofWeek },
@@ -44,7 +60,7 @@ export const saveAvailability = async (req, res) => {
       { returnDocument: "after", upsert: true },
     );
 
-    res.json({ message: "Availability saved", availability });
+    return res.json({ message: "Availability saved", availability });
   } catch (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({
       message: error.message,

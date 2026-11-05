@@ -10,10 +10,8 @@ const OTP_TIME = 10;
 const otpGenerater = () =>{ return crypto.randomInt(100000,1000000).toString()};
 
 export const emailOTP = async ({email,purpose}) =>{
-   console.log(email)
 const EMAIL = normalizedEmail(email);
 
-console.log(EMAIL)
 if(!EMAIL){
     throw new Error("Email is needed!");
 }

@@ -1,87 +1,39 @@
-# 🚀 JS Backend Starter
+# BookMe backend
 
-A simple and reusable **Node.js backend starter template** to quickly start new backend projects.
+Express and MongoDB API for BookMe. From this folder, run `npm install`, then `npm run dev` for development or `npm start` for production.
 
-## 🛠️ Getting Started
+## Runtime configuration
 
-### 1. Clone the repository
+No environment file is included. Set these values in the hosting provider's secret/configuration settings or in the process environment:
 
-Open the terminal inside the folder where you want to create your project and run:
+| Variable | Required for | Notes |
+| --- | --- | --- |
+| `DATABASE_URI` | API startup | MongoDB connection string |
+| `JWT_SECRET_KEY` | User login and Google OAuth state | Use a long, random secret |
+| `ADMIN_EMAIL` | Admin login | Dedicated admin account email |
+| `ADMIN_PASSWORD` | Admin login | Dedicated strong password |
+| `ADMIN_JWT_SECRET` | Admin API | Keep separate from the user JWT secret |
+| `FRONTEND_URL` | CORS and Google callback redirect | Frontend origin, with no trailing slash |
+| `GOOGLE_CLIENT_ID` | Google Calendar | OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google Calendar | OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | Google Calendar | Backend callback URL: `/api/calendar/google/callback` |
+| `RAZORPAY_KEY_ID` | Paid bookings | Razorpay public key ID |
+| `RAZORPAY_KEY_SECRET` | Paid bookings | Razorpay key secret |
+| `BREVO_API_KEY` | Booking email | Brevo API key |
+| `BREVO_SENDER_EMAIL` | Booking email | Verified sender; `EMAIL_FROM` is accepted as a fallback |
+| `BREVO_SENDER_NAME` | Booking email | Optional display name |
+| `PORT` | API startup | Optional; defaults to `3001` |
 
-```bash
-git clone https://github.com/nishantpal30/js-backend-starter.git .
-```
+The Google OAuth client must allow the exact callback URI configured in `GOOGLE_REDIRECT_URI`. Google Calendar and Razorpay features return a clear configuration error when their credentials are missing. Email notifications are skipped when Brevo is not configured.
 
-> The `.` at the end clones the repository directly into the current folder.
+## Admin API
 
-### 2. Install dependencies
+All admin routes are under `/api/admin`. `POST /login` checks `ADMIN_EMAIL` and `ADMIN_PASSWORD` and returns a short-lived bearer token. The dashboard, booking list/status/reschedule endpoints, and withdrawal status endpoint require that token.
 
-```bash
-npm install
-```
+- `GET /dashboard`
+- `GET /bookings?page=1&limit=30&status=all`
+- `PATCH /bookings/:id/status` with `{ "status": "confirmed" | "cancelled" }`
+- `PATCH /bookings/:id/reschedule` with `{ "date", "startTime", "endTime" }`
+- `PATCH /withdrawals/:id/status` with `{ "status": "processing" | "paid" | "rejected", "adminNote"? }`
 
-### 3. Create a `.env` file
-
-Create a `.env` file in the root directory and add your environment variables:
-
-```env
-PORT=3000
-DATABASE_URL=your_database_url
-JWT_SECRET=your_jwt_secret
-```
-## 🧹 Remove `.gitkeep` Files (Optional)
-
-This starter repository uses `.gitkeep` files to preserve the folder structure.
-
-After cloning the repository, you can remove all `.gitkeep` files by running:
-
-```bash
-find . -type f -name ".gitkeep" -delete
-```
-
-> Run this command from the root directory of the project.
-
-### 4. Start the project
-
-```bash
-npm run dev
-```
-
----
-### Remove Existing Git Repository
-
-If you cloned an existing repository and want to push the project to your own GitHub repository, remove the existing Git history:
-
-```powershell
-Remove-Item -Recurse -Force .git
-```
-
-> **Note:** This only removes the `.git` folder. It does not delete `.gitignore`, `.gitkeep`, or any project files.
-
-After removing `.git`, initialize your own repository:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPOSITORY_URL
-git push -u origin main
-```
-
-## 📂 Project Structure
-
-```text
-project/
-├── src/
-├── .env
-├── .gitignore
-├── package.json
-└── README.md
-```
-
-## 🚀 Start Building
-
-Your backend starter project is now ready. Customize it according to your project requirements and start building!
-
-⭐ If you find this starter useful, consider giving the repository a star.
+`processing` accepts a pending withdrawal for payout processing. Rejections release the reserved wallet amount. Confirmed bookings can be rescheduled only within the provider's saved availability and for the service's configured duration.

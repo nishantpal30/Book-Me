@@ -44,7 +44,7 @@ export const registerService = async (data) => {
       success: OTPverification.success,
     };
   }
-  const slug = slugify(User.businessName || User.name) || "business";
+  const slug = slugify(businessName || name) || "business";
   let finalslug = slug;
   let counter = 1;
   while (await User.findOne({ slug: finalslug })) {
@@ -59,7 +59,9 @@ export const registerService = async (data) => {
     password: hashPassword,
     slug: finalslug,
     businessName: businessName || " ",
-    businessDiscription:businessDescription || " ",
+    businessDiscription:businessDescription || "",
+    businessDescription:businessDescription || "",
+    timeZone: timezone || "Asia/Kolkata",
     timezone: timezone || "Asia/Kolkata",
   });
   const createToken = jwt.sign(
@@ -69,7 +71,9 @@ export const registerService = async (data) => {
   );
   return {
     statusCode: StatusCodes.CREATED,
+    success: true,
     message: "User is created successfully!",
     user,
+    createToken,
   };
 };

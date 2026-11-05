@@ -4,13 +4,13 @@ const withdrawalSchema = new mongoose.Schema(
     {
         userId:{
             type:mongoose.Schema.Types.ObjectId,
-            ref:"user",
+            ref:"User",
             required:true,
             index:true,
         },
         amount:{
             type:Number,
-            requires:true,
+            required:true,
             min:1,
         },
         currency:{
@@ -25,14 +25,18 @@ const withdrawalSchema = new mongoose.Schema(
         },
         payoutSnapshot:{
             accountHolderName:String,
-            bankname:String,
+            bankName:String,
             accountLast4:String,
             ifsc:String,
             upiId:String,
+            // Retained when reading snapshots created with the original field names.
+            accountHolder:String,
+            bankname:String,
+            IFSC:String,
         },
         adminNote:{
             type:String,
-            default:" ",
+            default:"",
             trim:true,
         },
     },{timestamps:true}

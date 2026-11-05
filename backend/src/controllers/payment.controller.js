@@ -18,7 +18,6 @@ const maskAccountNumber = (accountNumber = '') => {
 export const getPaymentOverview = async (req, res) => {
   try {
     const userId = toObjectId(req.user?.id?.userId);
-    console.log(userId)
     const [user, summary, transactions, withdrawals] = await Promise.all([
       User.findById(userId).select('payoutDetails'),
       getWalletSummary(userId),
@@ -47,10 +46,12 @@ export const updatePayoutDetails = async (req, res) => {
     }
 
     const payoutDetails = {
-      accountHolderName,
+      accountHolderName: String(accountHolderName).trim(),
+      accountHolder: String(accountHolderName).trim(),
       bankName: bankName || '',
       accountLast4: accountNumber ? maskAccountNumber(accountNumber) : '',
       ifsc: ifsc || '',
+      IFSC: ifsc || '',
       upiId: upiId || '',
       isComplete: Boolean(accountHolderName && (accountNumber || upiId)),
       updatedAt: new Date(),
@@ -91,17 +92,28 @@ export const requestWithdrawal = async (req, res) => {
     const withdrawal = await Withdrawal.create({
       userId,
       amount,
-      payoutSnapshot: user.payoutDetails,
+      payoutSnapshot: {
+        accountHolderName: user.payoutDetails.accountHolderName || user.payoutDetails.accountHolder,
+        bankName: user.payoutDetails.bankName || '',
+        accountLast4: user.payoutDetails.accountLast4 || '',
+        ifsc: user.payoutDetails.ifsc || user.payoutDetails.IFSC || '',
+        upiId: user.payoutDetails.upiId || '',
+      },
     });
 
-    await WalletTransaction.create({
-      userId,
-      withdrawalId: withdrawal._id,
-      type: 'withdrawal_hold',
-      amount,
-      status: 'pending',
-      description: 'Withdrawal requested',
-    });
+    try {
+      await WalletTransaction.create({
+        userId,
+        withdrawalId: withdrawal._id,
+        type: 'withdrawal_hold',
+        amount,
+        status: 'pending',
+        description: 'Withdrawal requested',
+      });
+    } catch (ledgerError) {
+      await Withdrawal.deleteOne({ _id: withdrawal._id });
+      throw ledgerError;
+    }
 
     res.status(201).json({ message: 'Withdrawal requested', withdrawal });
   } catch (error) {

@@ -42,7 +42,7 @@ const sendsEmail = ({
   // if reply email is present then add it to sending data other wise not add
   const checkReplytoEmail = getReplyToEmail(replyToEmail);
   if (checkReplytoEmail) {
-    sendingData.replyToEmail = checkReplytoEmail;
+    sendingData.replyTo = checkReplytoEmail;
   }
   const emailpastData = JSON.stringify(sendingData);
   // console.log(emailpastData);

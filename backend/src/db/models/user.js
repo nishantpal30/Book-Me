@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema(
             default:"",
             trim:true,
         },
+        businessDescription:{
+            type:String,
+            default:"",
+            trim:true,
+        },
         brandName:{
             type:String,
             default:"",
@@ -54,6 +59,23 @@ const userSchema = new mongoose.Schema(
             type:String,
             default:"",
         },
+        timezone:{
+            type:String,
+            default:"",
+        },
+        googleRefreshToken:{
+            type:String,
+            default:"",
+        },
+        googleCalendarConnected:{
+            type:Boolean,
+            default:false,
+        },
+        googleCalendarId:{
+            type:String,
+            default:"primary",
+        },
+        // Retained for existing records created with the original misspelled fields.
         googleRefereshToken:{
             type:String,
             default:"",
@@ -67,6 +89,17 @@ const userSchema = new mongoose.Schema(
             default:"primary"
         },
         payoutDetails:{
+            accountHolderName:{
+                type:String,
+                default:"",
+                trim:true,
+            },
+            ifsc:{
+                type:String,
+                default:"",
+                trim:true,
+                uppercase:true,
+            },
             accountHolder:{
                 type:String,
                 default:"",
@@ -101,7 +134,7 @@ const userSchema = new mongoose.Schema(
                 type:Date,
             }
         }
-    },{timeseries:true}
+    },{timestamps:true}
 
 );
 

@@ -7,8 +7,7 @@ export const listof_Services = async (req, res) => {
       userId: req.user?.id?.userId,
       isDeleted: { $ne: true },
     }).sort({createdAt:-1});
-    console.log(services);
-    return res.status(StatusCodes.CREATED).json(services);
+    return res.status(StatusCodes.OK).json(services);
   } catch (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({
       message: error.message,
@@ -20,19 +19,20 @@ export const listof_Services = async (req, res) => {
 export const create_services = async (req, res) => {
   try {
     const { name, duration, price, description, icon } = req.body;
-   console.log("BODY:", req.body);
-    if (!name || !duration) {
-    console.log(">>> VALIDATION BLOCK FIRED. name:", name, "duration:", duration);
+    const numericDuration = Number(duration);
+    const numericPrice = price === undefined ? 0 : Number(price);
+    if (!name?.trim() || !Number.isFinite(numericDuration) || numericDuration < 5 ||
+        !Number.isFinite(numericPrice) || numericPrice < 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Service name and duration is required!!",
+        message: "Enter a service name, a duration of at least 5 minutes, and a non-negative price",
       });
     }
      
     const service = await Service.create({
       userId: req.user?.id?.userId,
       name,
-      duration,
-      price: price || 0,
+      duration: numericDuration,
+      price: numericPrice,
       description: description || "",
       icon: icon || "C1.png",
     });
@@ -61,6 +61,22 @@ export const updateService = async (req, res) => {
         updates[field] = req.body[field];
       }
     });
+
+    if (updates.name !== undefined && !String(updates.name).trim()) {
+      return res.status(400).json({ message: "Service name cannot be empty" });
+    }
+    if (updates.duration !== undefined && (!Number.isFinite(Number(updates.duration)) || Number(updates.duration) < 5)) {
+      return res.status(400).json({ message: "Service duration must be at least 5 minutes" });
+    }
+    if (updates.price !== undefined && (!Number.isFinite(Number(updates.price)) || Number(updates.price) < 0)) {
+      return res.status(400).json({ message: "Service price must be a non-negative number" });
+    }
+    if (updates.isActive !== undefined && typeof updates.isActive !== "boolean") {
+      return res.status(400).json({ message: "Service visibility must be true or false" });
+    }
+    if (updates.duration !== undefined) updates.duration = Number(updates.duration);
+    if (updates.price !== undefined) updates.price = Number(updates.price);
+    if (updates.name !== undefined) updates.name = String(updates.name).trim();
 
     const service = await Service.findOneAndUpdate(
       { _id: req.params.id, userId: req.user?.id?.userId, isDeleted: { $ne: true } },
@@ -91,10 +107,11 @@ try {
         .status(StatusCodes.BAD_REQUEST)
         .json({message:"Service is not exist!!"})
     };
+    return res.json({ message: "Service deleted", service });
 
 } catch (error) {
-     return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Service name and duration is required!!",
+     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "Could not delete service",
       });
   }
 }

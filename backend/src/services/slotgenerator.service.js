@@ -2,8 +2,9 @@ import Availability from "../db/models/avalability.js";
 import Booking from "../db/models/booking.js";
 import { timeOverlap } from "../utils/overlap.js";
 import { getDayofWeek ,minutesTotime,timeTOminutes} from "../utils/time.js";
+import { isFutureLocalSlot } from "../utils/localDate.js";
 
-export const generateSlots = async ({userId,service,date})=>{
+export const generateSlots = async ({userId,service,date,timeZone})=>{
     const dayofWeek = getDayofWeek(date);
     // console.log(dayofWeek)
     const availability = await Availability.findOne({userId,dayofWeek});
@@ -24,7 +25,6 @@ export const generateSlots = async ({userId,service,date})=>{
 
     });
     // console.log(bookings)
-    console.log(availability.slots)
 //     console.log({
 //         name:"okk",
 //   slotWindows: availability?.slots?.length,
@@ -51,6 +51,10 @@ export const generateSlots = async ({userId,service,date})=>{
         while(cursor+service.duration <= end){
             const startTime = minutesTotime(cursor);
             const endTime = minutesTotime(cursor + service.duration);
+            if (!isFutureLocalSlot(date, startTime, timeZone)) {
+                cursor += service.duration;
+                continue;
+            }
             const hasconflict = bookings.some((booking)=>{
                return timeOverlap(startTime,endTime,booking.startTime,booking.endTime)
             });

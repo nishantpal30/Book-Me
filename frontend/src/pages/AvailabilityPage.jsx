@@ -200,9 +200,6 @@ const AvailabilityPage = () => {
             {days.map((day, index) => {
               const Icon = dayIcons[index];
               const isSelected = selectedDay === index;
-              const hasSaved = availability.some(
-                (item) => item.dayOfWeek === index && item.slots?.length > 0,
-              );
               return (
                 <button
                   key={day}

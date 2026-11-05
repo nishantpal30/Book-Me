@@ -1,5 +1,6 @@
 import { getEmailConfigStatus } from "../config/getEmailconfigStatus.js";
 import sendsEmail from "./sendsEmail.js";
+import bookingMessage from "../utils/bookingMessage.js";
 
 
 
@@ -24,7 +25,7 @@ export const sendBookingNotification = async ({ business, service, booking, type
 
   const results = [];
   for (const recipient of recipients) {
-    const message = buildBookingMessage({
+    const message = bookingMessage({
       business,
       service,
       booking,
@@ -35,7 +36,7 @@ export const sendBookingNotification = async ({ business, service, booking, type
     const result = await sendsEmail({
       to: recipient.email,
       senderName: business.businessName || business.name || 'BookMe',
-      replyTo: recipient.type === 'customer'
+      replyToEmail: recipient.type === 'customer'
         ? { email: business.email, name: business.businessName || business.name || 'Provider' }
         : { email: booking.customerEmail, name: booking.customerName || 'Customer' },
       ...message,

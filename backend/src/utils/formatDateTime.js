@@ -1,8 +1,8 @@
-const formatDateTime = (booking, timezone = 'Asia/Kolkata') => {
-  const date = new Date(`${booking.date}T${booking.startTime}:00`);
+const formatDateTime = (booking) => {
+  const date = new Date(`${booking.date}T00:00:00.000Z`);
   const displayDate = new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'full',
-    timeZone: timezone,
+    timeZone: "UTC",
   }).format(date);
 
   return `${displayDate}, ${booking.startTime}-${booking.endTime}`;

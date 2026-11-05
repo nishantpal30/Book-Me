@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminLoginPageStyles as css } from "../utils/dummystyle";
 import logo from "../assets/logo.png";
+import { adminLogin } from "../api/admin";
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const AdminLoginPage = () => {
       }
       navigate("/admin/dashboard");
     } catch (error) {
-      setMessage(error.message?.data?.message || "Admin login failed");
+      setMessage(error.response?.data?.message || "Admin login failed");
     } finally {
       setLoading(false);
     }

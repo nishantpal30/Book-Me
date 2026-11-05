@@ -13,7 +13,7 @@ const bookingMessage = ({
 }) => {
   const businessName = business.businessName || business.name || "BookMe";
   const serviceName = service.name || "appointment";
-  const appointmentTime = formatDateTime(booking, business.timezone);
+  const appointmentTime = formatDateTime(booking, business.timeZone || business.timezone);
   const bookingStatus = String(booking.status || "").replace("_", " ");
   const paymentStatus = String(booking.paymentStatus || "not_required").replace(
     "_",

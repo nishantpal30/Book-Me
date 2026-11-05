@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import {
   createPublicBooking,
@@ -50,7 +50,15 @@ import A15 from "../assets/avatars/A15.png";
 import A16 from "../assets/avatars/A16.png";
 import { getBrandThemeStyle ,publicBookingPageStyles as s } from "../utils/dummystyle";
 
-const today = new Date().toISOString().slice(0, 10);
+const getToday = (timeZone) => {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || "Asia/Kolkata" }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+};
+
+const today = getToday();
 
 const ICON_MAP = {
   "C1.png": C1,
@@ -91,6 +99,7 @@ const themeBannerImages = {
 
 export default function PublicBookingPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -147,7 +156,10 @@ export default function PublicBookingPage() {
         setServices(data.services || []);
         setForm((prev) => ({
           ...prev,
-          serviceId: data.services?.[0]?._id || "",
+          date: getToday(data.business?.timezone),
+          serviceId: data.services?.some((item) => item._id === searchParams.get("service"))
+            ? searchParams.get("service")
+            : data.services?.[0]?._id || "",
         }));
       } catch (error) {
         setMessage(
@@ -157,7 +169,7 @@ export default function PublicBookingPage() {
     };
 
     loadBusiness();
-  }, [slug]);
+  }, [slug, searchParams]);
 
   useEffect(() => {
     const loadSlots = async () => {
@@ -213,7 +225,6 @@ export default function PublicBookingPage() {
   };
 
   const sendBookingOtp = async () => {
-    console.log(form.customerEmail)
     if (!form.customerEmail) {
       setMessage("Enter your email first");
       return;
@@ -463,7 +474,7 @@ rzp.open();
                 <input
                   type="date"
                   name="date"
-                  min={today}
+                  min={getToday(business?.timezone)}
                   value={form.date}
                   onChange={handleChange}
                   className={s.dateInput}

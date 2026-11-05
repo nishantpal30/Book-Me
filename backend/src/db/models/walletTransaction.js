@@ -12,14 +12,20 @@ const walletTransactionSchema = new mongoose.Schema({
         ref:"Booking",
         index:true,
     },
+    withdrawalId:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Withdrawal",
+        index:true,
+    },
+    // Backward compatibility for older ledger rows.
     withdrawlId:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:"Withdrawl",
+        ref:"Withdrawal",
         index:true,
     },
     type:{
         type:String,
-        enum:["bookin_payout","withdrawl_hold","withdrawl_reversal"],
+        enum:["booking_payout","withdrawal_hold","withdrawal_reversal","bookin_payout","withdrawl_hold","withdrawl_reversal"],
         required:true,
     },
     amount:{
@@ -35,11 +41,20 @@ const walletTransactionSchema = new mongoose.Schema({
         default:" ",
         trim:true,
     },
+    description:{
+        type:String,
+        default:"",
+        trim:true,
+    },
 },{timestamps:true});
 
 walletTransactionSchema.index(
     {bookingId:1,type:1},
     {unique:true,partialFilterExpression:{bookingId:{$exists :true}}}
+);
+walletTransactionSchema.index(
+    {withdrawalId:1,type:1},
+    {unique:true,partialFilterExpression:{withdrawalId:{$exists:true}}}
 );
 const WalletTransaction = mongoose.model("WalletTransaction",walletTransactionSchema);
 export default WalletTransaction;
