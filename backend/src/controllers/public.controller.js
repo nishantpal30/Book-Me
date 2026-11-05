@@ -280,7 +280,10 @@ export const createPublicBooking = async (req, res) => {
     const currency = "inr";
     const rzp = amount > 0 ? getrzp() : null;
     if (amount > 0 && !rzp) {
-      return res.status(503).json({ message: "Razorpay payments are not configured yet" });
+      return res.status(503).json({
+        message:
+          "Razorpay payments are not configured on the server. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+      });
     }
 
     const otpResult = await verifyOTP({
