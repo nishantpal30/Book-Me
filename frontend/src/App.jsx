@@ -13,6 +13,7 @@ import AvailabilityPage from "./pages/AvailabilityPage";
 import ServicesPage from "./pages/ServicesPage";
 import PaymentPage from "./pages/paymentPage";
 import PublicBookingPage from "./pages/PublicBookingPage";
+import PublicProfilePage from "./pages/PublicProfilePage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicesPage";
 
@@ -78,6 +79,7 @@ const App = () => {
       <Route path="/payments" element={<ProcectedRoute><PaymentPage /></ProcectedRoute>}/>
       <Route path="/book/:slug" element={<PublicBookingPage />}/>
       <Route path="/public/:slug" element={<PublicBookingPage />}/>
+      <Route path="/p/:slug" element={<PublicProfilePage />} />
       <Route
         path="/booking"
         element={

@@ -1,6 +1,8 @@
 import client from "./client";
 
 export const getPublicBusiness = (slug) => client.get(`/public/${slug}`);
+export const getPublicProfile = (slug) =>
+  client.get(`/public/profile/${encodeURIComponent(slug)}`);
 export const getPublicSlots = (slug, params) =>
   client.post(`/public/${slug}/slots`, params);
 export const requestPublicBookingOtp = (slug, customerEmail) =>

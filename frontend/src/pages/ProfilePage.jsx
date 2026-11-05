@@ -3,7 +3,7 @@ import {useSearchParams} from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { getMe,updateProfile } from "../api/auth";
 import {getgoogleConnectUrl} from "../api/integration";
-import { Copy,BadgeCheck,Users,Globe,Save,Wand2,CalendarDays,Shield,BellRing,Zap,Clock,IndianRupee } from "lucide-react";
+import { Copy,BadgeCheck,Users,Globe,Save,Wand2,CalendarDays,Shield,BellRing,Zap,Clock,IndianRupee,QrCode,Share2,ExternalLink,X } from "lucide-react";
 import googleCalendarLogo from "../assets/Google_Calendar-Logo.wine.png";
 import gmailLogo from "../assets/gmail.webp";
 import p2Image from "../assets/P2.png";
@@ -46,8 +46,12 @@ const [loading,setLoading] =useState(false);
 const [connectingCalendar,setConnectingCalendar] = useState(false);
 const [message,setMessage] = useState(getCalendarMessage(calendarNotice));
 const [copyMessage,setCopyMessage] = useState("");
+const [showPublicQr,setShowPublicQr] = useState(false);
 
-const publicLink = user?.slug ?`${window.location.origin}/book/${user.slug}`:`${window.location.origin}`;
+const publicLink = user?.slug ? `${window.location.origin}/p/${encodeURIComponent(user.slug)}` : "";
+const publicQrImage = publicLink
+  ? `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&data=${encodeURIComponent(publicLink)}`
+  : "";
 const dynamicThemeUI = getBrandThemeStyle(form.brandTheme);
 const brandStyleVars = {
     "--brand-accent":form.brandAccent || dynamicThemeUI.accent,
@@ -107,9 +111,33 @@ const previewBannerImage = themeBannerImages[form.brandTheme] || greenBanner;
 
   const copyPublicLink = async () => {
     if (!publicLink) return;
-    await navigator.clipboard.writeText(publicLink);
-    setCopyMessage("Copied!");
-    window.setTimeout(() => setCopyMessage(""), 1800);
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      setCopyMessage("Copied!");
+      window.setTimeout(() => setCopyMessage(""), 1800);
+    } catch {
+      setCopyMessage("Copy unavailable");
+    }
+  };
+
+  const sharePublicProfile = async () => {
+    if (!publicLink) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${form.businessName || user?.name || "Business"} on BookMe`,
+          text: "View services and book an appointment.",
+          url: publicLink,
+        });
+        setCopyMessage("Profile shared");
+      } else {
+        await navigator.clipboard.writeText(publicLink);
+        setCopyMessage("Link copied");
+      }
+      window.setTimeout(() => setCopyMessage(""), 1800);
+    } catch (error) {
+      if (error.name !== "AbortError") setCopyMessage("Could not share profile");
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -191,27 +219,59 @@ const previewBannerImage = themeBannerImages[form.brandTheme] || greenBanner;
             </div>
           </div>
 
-          {/* Public Booking Link Card */}
+          {/* Public Profile Share Card */}
           <div className={s.linkCard}>
-            <h4 className={s.linkCardTitle}>Public booking link</h4>
+            <h4 className={s.linkCardTitle}>Public business profile</h4>
             <div className={s.linkRow}>
               <div className={s.linkBar}>
-                <span className={s.linkText}>{publicLink}</span>
+                {publicLink ? (
+                  <a href={publicLink} target="_blank" rel="noreferrer" className={s.linkText}>
+                    {publicLink}
+                  </a>
+                ) : (
+                  <span className={s.linkText}>Save your profile to create a share link</span>
+                )}
                 <button
+                  type="button"
                   onClick={copyPublicLink}
                   className={s.linkCopyButtonSmall}
+                  disabled={!publicLink}
+                  aria-label="Copy public profile link"
                 >
                   <Copy className={s.iconSmall} />
                 </button>
               </div>
-              <button onClick={copyPublicLink} className={s.linkCopyButtonMain}>
+              <button onClick={copyPublicLink} disabled={!publicLink} className={s.linkCopyButtonMain}>
                 <Wand2 className={s.iconSmall} />
                 {copyMessage || "Copy link"}
               </button>
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={sharePublicProfile}
+                disabled={!publicLink}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Share2 className={s.iconSmall} /> Share profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPublicQr(true)}
+                disabled={!publicLink}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <QrCode className={s.iconSmall} /> Show QR code
+              </button>
+              {publicLink && (
+                <a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <ExternalLink className={s.iconSmall} /> Preview
+                </a>
+              )}
+            </div>
             <div className={s.linkLiveIndicator}>
               <BadgeCheck className={s.iconSmall} />
-              <span>Your link is live and ready to share!</span>
+              <span>Share the profile link or QR code so customers can browse your services and book.</span>
             </div>
           </div>
 
@@ -550,6 +610,59 @@ const previewBannerImage = themeBannerImages[form.brandTheme] || greenBanner;
           </div>
         </div>
       </div>
+      {showPublicQr && publicLink && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowPublicQr(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-qr-title"
+            className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setShowPublicQr(false)}
+              aria-label="Close QR code"
+              className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            >
+              <X size={18} />
+            </button>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+              <QrCode size={22} />
+            </div>
+            <h2 id="profile-qr-title" className="mt-3 text-lg font-extrabold text-slate-900">
+              Share your public profile
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">Customers can scan this code to view your services and book.</p>
+            <img
+              src={publicQrImage}
+              alt={`QR code linking to ${publicLink}`}
+              className="mx-auto mt-5 h-56 w-56 rounded-xl border border-slate-100 bg-white p-2"
+            />
+            <a
+              href={publicQrImage}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700 underline"
+            >
+              Open or save QR image <ExternalLink size={13} />
+            </a>
+            <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600">{publicLink}</p>
+            <button
+              type="button"
+              onClick={copyPublicLink}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-700"
+            >
+              <Copy size={16} /> {copyMessage || "Copy profile link"}
+            </button>
+          </section>
+        </div>
+      )}
     </AppLayout>
   );
 }
