@@ -16,6 +16,7 @@ export const getEmailConfigStatus = () => {
   return {
     provider: 'brevo',
     status: missing.length === 0,
+    configured: missing.length === 0,
     missing,
     from: sender.email,
     senderName: sender.name,

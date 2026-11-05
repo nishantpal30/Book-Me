@@ -16,6 +16,7 @@ import {
   listServices,
   updateService,
 } from "../api/services";
+import { getMe } from "../api/auth";
 import {
   Plus,
   Save,
@@ -28,6 +29,8 @@ import {
   IndianRupee,
   FileText,
   Layers,
+  QrCode,
+  Share2,
 } from "lucide-react";
 import { servicesPageStyles as s } from "../utils/dummystyle";
 
@@ -57,6 +60,9 @@ const ServicesPage = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [businessSlug, setBusinessSlug] = useState("");
+  const [qrService, setQrService] = useState(null);
+  const [shareMessage, setShareMessage] = useState("");
 
   const showToast = useToast();
 
@@ -76,7 +82,32 @@ const ServicesPage = () => {
 
   useEffect(() => {
     loadServices();
+    getMe()
+      .then(({ data }) => setBusinessSlug(data.user?.slug || ""))
+      .catch((error) => setMessage(error.response?.data?.message || "Could not load your booking link"));
   }, []);
+
+  const serviceBookingLink = (service) => (
+    `${window.location.origin}/book/${businessSlug}?service=${encodeURIComponent(service._id)}`
+  );
+  const qrImageUrl = (service) => (
+    `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(serviceBookingLink(service))}`
+  );
+  const shareBookingLink = async () => {
+    if (!qrService) return;
+    const url = serviceBookingLink(qrService);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Book ${qrService.name}`, url });
+        setShareMessage("Booking link shared");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareMessage("Booking link copied");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") setShareMessage("Could not share this booking link");
+    }
+  };
 
   const handleChange = (event) => {
     setForm((prev) => ({
@@ -393,6 +424,17 @@ const ServicesPage = () => {
 
                   <button
                     type="button"
+                    onClick={() => { setQrService(service); setShareMessage(""); }}
+                    disabled={!businessSlug || !service.isActive}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-violet-300 hover:text-violet-700 disabled:opacity-50"
+                    aria-label={`Share ${service.name} booking QR code`}
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => startEditing(service)}
                     className={s.editButton}
                   >
@@ -412,6 +454,42 @@ const ServicesPage = () => {
           ))}
         </div>
       </section>
+
+      {qrService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setQrService(null)}>
+          <section
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="service-qr-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+              <QrCode className="h-6 w-6" />
+            </div>
+            <h2 id="service-qr-title" className="mt-3 text-lg font-bold text-slate-900">Share {qrService.name}</h2>
+            <p className="mt-1 text-sm text-slate-500">Customers can scan this code to open the booking page for this service.</p>
+            <img
+              src={qrImageUrl(qrService)}
+              alt={`QR code for booking ${qrService.name}`}
+              className="mx-auto mt-4 h-56 w-56 rounded-lg border border-slate-200 bg-white p-2"
+            />
+            <a href={qrImageUrl(qrService)} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-violet-700 underline">
+              Open or save QR image
+            </a>
+            <a href={serviceBookingLink(qrService)} target="_blank" rel="noreferrer" className="mt-3 block break-all text-xs text-violet-700 underline">
+              {serviceBookingLink(qrService)}
+            </a>
+            {shareMessage && <p className="mt-2 text-sm text-slate-600" role="status">{shareMessage}</p>}
+            <div className="mt-5 flex justify-center gap-3">
+              <button type="button" onClick={() => setQrService(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Close</button>
+              <button type="button" onClick={shareBookingLink} className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800">
+                <Share2 className="h-4 w-4" /> Share link
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

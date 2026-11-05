@@ -6,6 +6,6 @@ const paymentRoutes = express.Router();
 
 paymentRoutes.get("/",isAuthenticated,getPaymentOverview);
 paymentRoutes.put("/payout-details",isAuthenticated,updatePayoutDetails);
-paymentRoutes.post("/withdrawls",isAuthenticated,requestWithdrawal);
+paymentRoutes.post("/withdrawals",isAuthenticated,requestWithdrawal);
 
 export default paymentRoutes;

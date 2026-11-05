@@ -36,9 +36,8 @@ export const userLogin_Service = async (data) => {
         success:false,
       };
     }
-    const user = {userId:checkUser._id}
     const createToken = jwt.sign(
-      { userId: user },
+      { userId: String(checkUser._id) },
       process.env.JWT_SECRET_KEY,
       { expiresIn: "1d" },
     );

@@ -2,7 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import User from "../db/models/user.js";
 
 export const filldetailsVerification = async (data) =>{
-     const {name , email , password , businessName,businessDescription , timezone ,emailotp} = data
+     const {name , email , password} = data
     if( !name || !email || !password) {
         return{
             statusCode:StatusCodes.NOT_FOUND,
@@ -10,7 +10,7 @@ export const filldetailsVerification = async (data) =>{
             status:false,
         }
     }
-    const emailcheck = await User.findOne({email});
+    const emailcheck = await User.findOne({ email: String(email).trim().toLowerCase() });
 if(emailcheck)
     {
     return{

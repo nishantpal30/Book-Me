@@ -13,6 +13,7 @@ import { bookingPayouttransation } from "../services/wallet.service.js";
 import { normalizedEmail } from "../utils/normalizedEMail.js";
 import { emailOTP } from "../services/emailOTP.js";
 import { verifyOTP } from "../services/verifyOTP.js";
+import { isFutureLocalSlot, isValidDateString, localDateString } from "../utils/localDate.js";
 
 
 // BUSINESS
@@ -27,38 +28,12 @@ const toPublicInfo = (business) => ({
   id: business._id,
   name: business.name,
   slug: business.slug,
-  businessDescription: business.businessDescription,
+  businessDescription: business.businessDescription || business.businessDiscription || "",
   brandTheme: business.brandTheme,
   brandAccent: business.brandAccent,
-  timezone: business.timezone,
-  googleCalendarConnected: business.googleCalendarConnected,
+  timezone: business.timeZone || business.timezone || "Asia/Kolkata",
+  googleCalendarConnected: Boolean(business.googleCalendarConnected || business.googleCalenderConnected),
 });
-
-// PAYMENT HOLD WINDOW
-const holdWindowStart = () => {
-  return new Date(Date.now() - 30 * 60 * 1000);
-};
-
-// FIND ACTIVE SLOT BOOKINGS
-const findActiveSlotBookings = ({ userId, date }) => {
-  return Booking.find({
-    userId,
-    date,
-
-    $or: [
-      {
-        status: "confirmed",
-      },
-
-      {
-        status: "pending_payment",
-        createdAt: {
-          $gte: holdWindowStart(),
-        },
-      },
-    ],
-  });
-};
 
 // GET PUBLIC BUSINESS
 export const getPublicBusiness = async (req, res) => {
@@ -133,10 +108,16 @@ export const getPublicSlots = async (req, res) => {
       });
     }
 
+    const timeZone = business.timeZone || business.timezone;
+    if (!isValidDateString(date) || date < localDateString(new Date(), timeZone)) {
+      return res.json({ slots: [] });
+    }
+
     const slots = await generateSlots({
       userId: business._id,
       service,
       date,
+      timeZone,
     });
 // console.log(slots)
     return res.json({
@@ -154,7 +135,6 @@ export const getPublicSlots = async (req, res) => {
 export const requestPublicBookingOtp = async (req, res) => {
   try {
     const { customerEmail } = req.body;
-console.log(customerEmail)
     const userEmail = normalizedEmail(customerEmail);
 
     if (!userEmail) {
@@ -278,20 +258,31 @@ export const createPublicBooking = async (req, res) => {
         message: "Service not found",
       });
     }
-    const bookings = await findActiveSlotBookings({
+    if (!isValidDateString(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(startTime)) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(endTime)) ||
+        !isFutureLocalSlot(date, startTime, business.timeZone || business.timezone)) {
+      return res.status(400).json({ message: "Choose a valid future date and time" });
+    }
+    const availableSlots = await generateSlots({
       userId: business._id,
+      service,
       date,
+      timeZone: business.timeZone || business.timezone,
     });
-// console.log("public",bookings)
-    const hasConflict = bookings.some((booking) =>
-      timeOverlap(startTime, endTime, booking.startTime, booking.endTime),
-    );
-
-    if (hasConflict) {
+    const selectedSlotIsAvailable = availableSlots.some((slot) => slot.startTime === startTime && slot.endTime === endTime);
+    if (!selectedSlotIsAvailable) {
       return res.status(409).json({
-        message: "That slot is no longer available",
+        message: "That slot is outside availability or is no longer available",
       });
     }
+    const amount = toRzpAmount(service.price);
+    const { platformFeeAmount, providerPayoutAmount } = calculatePlatformFee(amount);
+    const currency = "inr";
+    const rzp = amount > 0 ? getrzp() : null;
+    if (amount > 0 && !rzp) {
+      return res.status(503).json({ message: "Razorpay payments are not configured yet" });
+    }
+
     const otpResult = await verifyOTP({
       email: normalizedCustomerEmail,
       purpose: "booking",
@@ -302,21 +293,6 @@ export const createPublicBooking = async (req, res) => {
     if (!otpResult.verified) {
       return res.status(400).json({
         message: otpResult.message || "Email verification is required",
-      });
-    }
-
-    const amount = toRzpAmount(service.price);
-console.log(amount)
-    const { platformFeeAmount, providerPayoutAmount } =
-      calculatePlatformFee(amount);
-
-    const currency = "inr";
-
-    const rzp = amount > 0 ? getrzp() : null;
-// console.log("Payment",rzp)
-    if (amount > 0 && !rzp) {
-      return res.status(503).json({
-        message: "Razorpay payments are not configured yet",
       });
     }
 
@@ -448,13 +424,13 @@ const verifyRazorpaySignature = ({ orderId, paymentId, signature }) => {
     !orderId ||
     !paymentId ||
     !signature ||
-    !process.env.RZRAZORPAY_KEY_SECRET
+    !process.env.RAZORPAY_KEY_SECRET
   ) {
     return false;
   }
 
   const generatedSignature = crypto
-    .createHmac("sha256", process.env.RZRAZORPAY_KEY_SECRET)
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
     .update(`${orderId}|${paymentId}`)
     .digest("hex");
 

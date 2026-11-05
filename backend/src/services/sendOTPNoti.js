@@ -2,7 +2,6 @@ import emailTemplate from "../utils/emailTemplate.js";
 import sendsEmail from "./sendsEmail.js";
 
 export const sendOtpNotification = async ({ email, otp_code, purpose }) => {
-  console.log(otp_code)
   const title = purpose === 'registration' ? 'Verify your BookMe account' : 'Verify your booking email';
   const intro = `Use this verification code to continue. The code expires in 10 minutes.`;
   const htmlContent = emailTemplate({

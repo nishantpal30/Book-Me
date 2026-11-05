@@ -2,7 +2,7 @@ import client from "./client";
 
 export const getPublicBusiness = (slug) => client.get(`/public/${slug}`);
 export const getPublicSlots = (slug, params) =>
-  client.post(`/public/${slug}/slots`, { params });
+  client.post(`/public/${slug}/slots`, params);
 export const requestPublicBookingOtp = (slug, customerEmail) =>
   client.post(`/public/${slug}/otp/request`, { customerEmail });
 export const verifyPublicBookingOtp = (slug, data) =>

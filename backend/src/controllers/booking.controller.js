@@ -1,28 +1,21 @@
 import Booking from "../db/models/booking.js";
-import Service from "../db/models/service.js";
 import User from "../db/models/user.js";
 import { buildCustomerCalendar } from "../utils/calendarlink.js";
 import { cancelBookingCalendarEvent,updateBookingCalendarEvent } from "../services/googleCalendar.service.js";
 import { sendBookingNotification } from "../services/sendBookingNoti.js";
-import { timeOverlap } from "../utils/overlap.js";
+import { rescheduleBookingRecord } from "../services/bookingManagement.service.js";
 
 
 
 export const listofBooking = async (req , res) =>{
     try {
         const query = { userId:req.user?.id?.userId };
-        let bookingStatus = req.query.status;
-        if(bookingStatus){
-            if(bookingStatus==="rescheduled"){
-                query.isRescheduled = true;
-            }else{
-                return query.status = bookingStatus;
-            }
+        const bookingStatus = req.query.status;
+        if (bookingStatus === "rescheduled") query.isRescheduled = true;
+        else if (bookingStatus) query.status = bookingStatus;
+        if (!bookingStatus || bookingStatus === "rescheduled") {
+          query.status = { $nin: ["pending_payment", "payment_failed"] };
         }
-
-          if (!bookingStatus || bookingStatus === 'rescheduled') {
-      query.status = { $nin: ['pending_payment', 'payment_failed'] };
-    }
     let bookingDate = req.query.date;
     if (bookingDate) query.date = bookingDate;
 
@@ -31,7 +24,7 @@ export const listofBooking = async (req , res) =>{
         .populate('serviceId', 'name duration price')
         .sort({ createdAt: -1 })
         .lean(),
-      User.findById(req.user?.id?.userId).select('name businessName').lean(),
+      User.findById(req.user?.id?.userId).select('name businessName timeZone timezone').lean(),
     ]);
 
     const bookingsWithCalendarUrls = bookings.map((booking) => {
@@ -57,23 +50,36 @@ res.json({ bookings: bookingsWithCalendarUrls });
 export const updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const allowed = ['pending', 'pending_payment', 'confirmed', 'cancelled', 'payment_failed'];
+    const allowed = ["confirmed", "cancelled"];
 
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: 'Invalid booking status' });
     }
 
-    const booking = await Booking.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user?.id?.userId},
-      { status },
-      { new: true }
-    ).populate('serviceId', 'name duration price');
+    const booking = await Booking.findOne({ _id: req.params.id, userId: req.user?.id?.userId });
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    if (status === "confirmed" && !["paid", "not_required"].includes(booking.paymentStatus)) {
+      return res.status(409).json({ message: "A booking cannot be confirmed before payment is complete" });
+    }
+    booking.status = status;
+    await booking.save();
+    await booking.populate('serviceId', 'name duration price');
+
     const business = await User.findById(req.user?.id?.userId);
+    if (business && status === "confirmed" && booking.serviceId) {
+      try {
+        const calendarResult = await updateBookingCalendarEvent({ business, service: booking.serviceId, booking });
+        booking.googleEventId = calendarResult.googleEventId || booking.googleEventId || "";
+        booking.customerCalendarUrl = calendarResult.customerCalendarUrl || booking.customerCalendarUrl;
+        await booking.save();
+      } catch (calendarError) {
+        console.error("Google Calendar confirmation failed:", calendarError.message);
+      }
+    }
     if (business && status === 'cancelled') {
       try {
         await cancelBookingCalendarEvent({ business, booking });
@@ -112,32 +118,14 @@ export const rescheduleBooking = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    const conflictingBookings = await Booking.find({
-      _id: { $ne: booking._id },
-      userId: req.user?.id?.userId,
-      date,
-      status: { $nin: ['cancelled', 'payment_failed'] },
-    });
-
-    const hasConflict = conflictingBookings.some((candidate) => (
-      timeOverlap(startTime, endTime, candidate.startTime, candidate.endTime)
-    ));
-
-    if (hasConflict) {
-      return res.status(409).json({ message: 'That slot is already booked' });
+    const business = await User.findById(req.user?.id?.userId);
+    if (!business) return res.status(404).json({ message: "Provider not found" });
+    let service;
+    try {
+      ({ service } = await rescheduleBookingRecord({ booking, business, date, startTime, endTime }));
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({ message: error.message });
     }
-
-    booking.date = date;
-    booking.startTime = startTime;
-    booking.endTime = endTime;
-    booking.status = booking.status === 'cancelled' ? 'confirmed' : booking.status;
-    booking.isRescheduled = true;
-    booking.rescheduleCount = (booking.rescheduleCount || 0) + 1;
-
-    const [business, service] = await Promise.all([
-      User.findById(req.user?.id?.userId),
-      Service.findById(booking.serviceId),
-    ]);
 
     if (business && service) {
       try {
@@ -148,7 +136,6 @@ export const rescheduleBooking = async (req, res) => {
         console.error('Google Calendar reschedule failed:', calendarError.message);
       }
     }
-
     await booking.save();
 
     const populatedBooking = await Booking.findById(booking._id).populate('serviceId', 'name duration price');

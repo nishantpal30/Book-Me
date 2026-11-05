@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { buildCustomerCalendar } from "../utils/calendarlink.js";
+import { normalizeTimeZone } from "../utils/localDate.js";
 
 const getOauthClient = () => {
   return new google.auth.OAuth2(
@@ -10,16 +11,23 @@ const getOauthClient = () => {
 };
 
 // Generate Google OAuth authorization URL
-export const getGoogleAuthURI = ({ userId }) => {
+export const getGoogleAuthURI = (state) => {
   const oauth2Client = getOauthClient();
 
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
     scope: ["https://www.googleapis.com/auth/calendar.events"],
-    state: String(userId),
+    state: String(state),
   });
 };
+
+const isCalendarConnected = (business) => Boolean(
+  business.googleCalendarConnected || business.googleCalenderConnected,
+);
+const getRefreshToken = (business) => business.googleRefreshToken || business.googleRefereshToken;
+const getCalendarId = (business) => business.googleCalendarId || business.googleCalenderId || "primary";
+const getTimeZone = (business) => normalizeTimeZone(business.timeZone || business.timezone);
 
 // Exchange authorization code for Google tokens
 export const getGoogleTokens = async (code) => {
@@ -44,7 +52,7 @@ export const createBookingCalendarEvent = async ({
 
   // If Google Calendar isn't connected,
   // only return the customer calendar URL.
-  if (!business.googleCalendarConnected || !business.googleRefreshToken) {
+  if (!isCalendarConnected(business) || !getRefreshToken(business)) {
     return {
       customerCalendarUrl,
     };
@@ -53,7 +61,7 @@ export const createBookingCalendarEvent = async ({
   const oauth2Client = getOauthClient();
 
   oauth2Client.setCredentials({
-    refresh_token: business.googleRefreshToken,
+    refresh_token: getRefreshToken(business),
   });
 
   const calendar = google.calendar({
@@ -77,12 +85,12 @@ export const createBookingCalendarEvent = async ({
 
     start: {
       dateTime: `${booking.date}T${booking.startTime}:00`,
-      timeZone: business.timezone || "Asia/Kolkata",
+      timeZone: getTimeZone(business),
     },
 
     end: {
       dateTime: `${booking.date}T${booking.endTime}:00`,
-      timeZone: business.timezone || "Asia/Kolkata",
+      timeZone: getTimeZone(business),
     },
 
     attendees: [
@@ -107,7 +115,7 @@ export const createBookingCalendarEvent = async ({
   };
 
   const { data } = await calendar.events.insert({
-    calendarId: business.googleCalendarId || "primary",
+    calendarId: getCalendarId(business),
     resource: event,
     sendUpdates: "all",
   });
@@ -130,7 +138,7 @@ export const updateBookingCalendarEvent = async ({
     booking,
   });
 
-  if (!business.googleCalendarConnected || !business.googleRefreshToken) {
+  if (!isCalendarConnected(business) || !getRefreshToken(business)) {
     return {
       customerCalendarUrl,
     };
@@ -149,7 +157,7 @@ export const updateBookingCalendarEvent = async ({
   const oauth2Client = getOauthClient();
 
   oauth2Client.setCredentials({
-    refresh_token: business.googleRefreshToken,
+    refresh_token: getRefreshToken(business),
   });
 
   const calendar = google.calendar({
@@ -173,12 +181,12 @@ export const updateBookingCalendarEvent = async ({
 
     start: {
       dateTime: `${booking.date}T${booking.startTime}:00`,
-      timeZone: business.timezone || "Asia/Kolkata",
+      timeZone: getTimeZone(business),
     },
 
     end: {
       dateTime: `${booking.date}T${booking.endTime}:00`,
-      timeZone: business.timezone || "Asia/Kolkata",
+      timeZone: getTimeZone(business),
     },
 
     attendees: [
@@ -202,12 +210,20 @@ export const updateBookingCalendarEvent = async ({
     },
   };
 
-  const { data } = await calendar.events.update({
-    calendarId: business.googleCalendarId || "primary",
-    eventId: booking.googleEventId,
-    resource: event,
-    sendUpdates: "all",
-  });
+  let data;
+  try {
+    ({ data } = await calendar.events.update({
+      calendarId: getCalendarId(business),
+      eventId: booking.googleEventId,
+      resource: event,
+      sendUpdates: "all",
+    }));
+  } catch (error) {
+    if ([404, 410].includes(error.code || error.response?.status)) {
+      return createBookingCalendarEvent({ business, service, booking });
+    }
+    throw error;
+  }
 
   return {
     googleEventId: data.id,
@@ -218,8 +234,8 @@ export const updateBookingCalendarEvent = async ({
 // Cancel Google Calendar event
 export const cancelBookingCalendarEvent = async ({ business, booking }) => {
   if (
-    !business.googleCalendarConnected ||
-    !business.googleRefreshToken ||
+    !isCalendarConnected(business) ||
+    !getRefreshToken(business) ||
     !booking.googleEventId
   ) {
     return false;
@@ -228,7 +244,7 @@ export const cancelBookingCalendarEvent = async ({ business, booking }) => {
   const oauth2Client = getOauthClient();
 
   oauth2Client.setCredentials({
-    refresh_token: business.googleRefreshToken,
+    refresh_token: getRefreshToken(business),
   });
 
   const calendar = google.calendar({
@@ -237,7 +253,7 @@ export const cancelBookingCalendarEvent = async ({ business, booking }) => {
   });
 
   await calendar.events.patch({
-    calendarId: business.googleCalendarId || "primary",
+    calendarId: getCalendarId(business),
     eventId: booking.googleEventId,
     resource: {
       status: "cancelled",

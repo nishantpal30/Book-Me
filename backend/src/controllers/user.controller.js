@@ -11,7 +11,13 @@ export const registerUser = async (req, res) => {
   try {
     // console.log(req.body)
     const registerResponse = await registerService(req.body);
-    return res.status(registerResponse.statusCode).json(registerResponse);
+    const response = {
+      success: Boolean(registerResponse.success),
+      message: registerResponse.message,
+      user: registerResponse.user ? toUserResponse(registerResponse.user) : undefined,
+      token: registerResponse.createToken,
+    };
+    return res.status(registerResponse.statusCode).json(response);
   } catch (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({
       message: error.message,
@@ -47,7 +53,8 @@ export const registerOTP = async (req, res) => {
 
 export const verifyRegistration_OTP = async (req, res) => {
   try {
-    const { email, emailOTP } = req.body;
+    const email = req.body.email;
+    const emailOTP = req.body.emailOTP || req.body.emailOtp;
     const userEmail = email?.toLowerCase().trim();
     if (!userEmail || !emailOTP) {
       return res
@@ -89,19 +96,10 @@ export const loginUser = async (req, res) => {
     const loginUser_Response = await userLogin_Service(req.body);
     // console.log(loginUser_Response);
     if (loginUser_Response.success == true) {
-      return res
-        .status(loginUser_Response.statusCode)
-        .cookie("token", loginUser_Response.createToken, {
-          maxAge: 1 * 24 * 60 * 60 * 1000,
-          httpOnly: true,
-          secure: true, 
-          sameSite: "none",
-          path: "/",
-        })
-        .json({
+      return res.status(loginUser_Response.statusCode).json({
           success: loginUser_Response.success,
           message: loginUser_Response.message,
-          user: loginUser_Response.checkUser,
+          user: toUserResponse(loginUser_Response.checkUser),
           token: loginUser_Response.createToken,
         });
     } else {
@@ -122,10 +120,19 @@ export const updateProfile = async (req, res) => {
     const {
       businessName,
       businessDiscription,
+      businessDescription,
       timezone,
       brandTheme,
       brandAccent,
     } = req.body;
+
+    if (timezone !== undefined) {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
+      } catch {
+        return res.status(400).json({ message: "Choose a valid time zone" });
+      }
+    }
 
     const user = await User.findById(req.user?.id?.userId);
     // console.log(user);
@@ -135,9 +142,15 @@ export const updateProfile = async (req, res) => {
     }
 
     if (businessName !== undefined) user.businessName = businessName;
-    if (businessDiscription !== undefined)
-      user.businessDiscription = businessDiscription;
-    if (timezone !== undefined) user.timeZone = timezone;
+    const nextDescription = businessDescription ?? businessDiscription;
+    if (nextDescription !== undefined) {
+      user.businessDescription = nextDescription;
+      user.businessDiscription = nextDescription;
+    }
+    if (timezone !== undefined) {
+      user.timeZone = timezone;
+      user.timezone = timezone;
+    }
     if (brandTheme !== undefined) user.brandTheme = brandTheme;
     if (brandAccent !== undefined) user.brandAccent = brandAccent;
 

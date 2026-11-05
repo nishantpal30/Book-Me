@@ -14,5 +14,5 @@ export const isValidTimeRange =(startTime,endTime)=>{
     return timeTOminutes(startTime)<timeTOminutes(endTime);
 };
 export const getDayofWeek = (date) => {
-  return new Date(`${date}T00:00:00`).getDay();
+  return new Date(`${date}T00:00:00.000Z`).getUTCDay();
 };

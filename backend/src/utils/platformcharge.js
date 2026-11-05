@@ -5,7 +5,10 @@ export const calculatePlatformFee = (amount) =>{
     const platformfee = Math.round(safeamount*PLATFORM_FEE_RATE);
     const providePayoutAmount = Math.max(0,safeamount-platformfee);
 
-    return {platformfee,providePayoutAmount}
+    return {
+        platformFeeAmount: platformfee,
+        providerPayoutAmount: providePayoutAmount,
+    }
 };
 
 export const formatMinorMoney = (amount,currency="inr") =>{
