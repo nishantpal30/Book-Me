@@ -6,6 +6,8 @@ Express and MongoDB API for BookMe. From this folder, run `npm install`, then `n
 
 No environment file is included. Set these values in the hosting provider's secret/configuration settings or in the process environment:
 
+For local development, create `backend/.env` and add the values below. The backend loads that file even if you start it from the repository root. Keep the secret out of source control and never put it in the frontend environment.
+
 | Variable | Required for | Notes |
 | --- | --- | --- |
 | `DATABASE_URI` | API startup | MongoDB connection string |
@@ -23,6 +25,8 @@ No environment file is included. Set these values in the hosting provider's secr
 | `BREVO_SENDER_EMAIL` | Booking email | Verified sender; `EMAIL_FROM` is accepted as a fallback |
 | `BREVO_SENDER_NAME` | Booking email | Optional display name |
 | `PORT` | API startup | Optional; defaults to `3001` |
+
+Paid bookings require both `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. If either is missing, the API returns a configuration error instead of opening checkout.
 
 The Google OAuth client must allow the exact callback URI configured in `GOOGLE_REDIRECT_URI`. Google Calendar and Razorpay features return a clear configuration error when their credentials are missing. Email notifications are skipped when Brevo is not configured.
 
