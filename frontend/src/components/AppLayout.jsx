@@ -95,7 +95,7 @@ const AppLayout = ({ children }) => {
                     <button
                       onClick={() => {
                         setDropdownOpen(false);
-                        LogOut();
+                        logout();
                       }}
                       className={css.logoutButton}
                     >
