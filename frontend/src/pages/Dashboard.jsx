@@ -107,8 +107,8 @@ const buildGmailShareUrl = (publicLink) => {
   const params = new URLSearchParams({
     view: "cm",
     fs: "1",
-    su: "Book a session with me",
-    body: `Here is my booking link: ${publicLink}`,
+    su: "View my services and book",
+    body: `Here is my public profile: ${publicLink}`,
   });
 
   return `https://mail.google.com/mail/?${params.toString()}`;
@@ -449,7 +449,9 @@ export default function DashboardPage() {
     loadDashboard().catch(() => {});
   }, []);
 // console.log(setUser)
-  const publicLink = user?.slug ?`${window.location.origin}/book/${user.slug}`:`${window.location.origin}`;
+  const publicLink = user?.slug
+    ? `${window.location.origin}/p/${encodeURIComponent(user.slug)}`
+    : "";
   // console.log(user)
   
 
@@ -772,7 +774,7 @@ export default function DashboardPage() {
           </div>
 
           <div className={s.publicLinkCard}>
-            <h3 className={s.publicLinkTitle}>Public booking link</h3>
+            <h3 className={s.publicLinkTitle}>Public profile link</h3>
             <div className={s.publicLinkInputContainer}>
               <span className={s.publicLinkText}>
                 {publicLink || "Save profile to generate..."}
@@ -781,22 +783,22 @@ export default function DashboardPage() {
                 <button
                   onClick={copyPublicLink}
                   className={s.copyButton}
-                  aria-label={copyMessage || "Copy booking link"}
+                  aria-label={copyMessage || "Copy public profile link"}
                 >
                   <Copy className={s.copyIcon} />
                 </button>
               )}
             </div>
             <p className={s.publicLinkHelper}>
-              Share your link and start getting
+              Share your profile to show customers
               <br />
-              bookings instantly.
+              your services and booking options.
             </p>
 
-            <h4 className={s.shareTitle}>Share your link</h4>
+            <h4 className={s.shareTitle}>Share your profile</h4>
             <div className={s.socialIconsContainer}>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent("Book a session with me: " + publicLink)}`}
+                href={`https://wa.me/?text=${encodeURIComponent("View my services and book here: " + publicLink)}`}
                 target="_blank"
                 rel="noreferrer"
                 className={s.socialIconLink}

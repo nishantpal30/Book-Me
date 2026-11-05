@@ -37,3 +37,7 @@ All admin routes are under `/api/admin`. `POST /login` checks `ADMIN_EMAIL` and 
 - `PATCH /withdrawals/:id/status` with `{ "status": "processing" | "paid" | "rejected", "adminNote"? }`
 
 `processing` accepts a pending withdrawal for payout processing. Rejections release the reserved wallet amount. Confirmed bookings can be rescheduled only within the provider's saved availability and for the service's configured duration.
+
+## Public profiles
+
+`GET /api/public/profile/:slug` returns a business's public name, description, theme, accent color, and active services. The frontend exposes the shareable profile at `/p/:slug`; profile owners can copy the URL, share it, or open its QR code from Profile or Dashboard.

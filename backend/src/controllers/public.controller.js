@@ -62,10 +62,50 @@ export const getPublicBusiness = async (req, res) => {
       business: toPublicInfo(business),
       services,
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       message: "Server error",
       error: error.message,
+    });
+  }
+};
+
+// GET A SHAREABLE PUBLIC BUSINESS PROFILE
+export const getPublicProfile = async (req, res) => {
+  try {
+    const business = await User.findOne({ slug: req.params.slug })
+      .select(
+        "slug name businessName brandName businessDescription businessDiscription brandTheme brandAccent",
+      )
+      .lean();
+
+    if (!business) {
+      return res.status(404).json({ message: "Business not found" });
+    }
+
+    const services = await Service.find({
+      userId: business._id,
+      isActive: true,
+      isDeleted: { $ne: true },
+    })
+      .select("name duration price description icon")
+      .sort({ name: 1 })
+      .lean();
+
+    return res.json({
+      profile: {
+        slug: business.slug,
+        name: business.businessName || business.brandName || business.name,
+        description:
+          business.businessDescription || business.businessDiscription || "",
+        brandTheme: business.brandTheme || "emerald",
+        brandAccent: business.brandAccent || "#047857",
+      },
+      services,
+    });
+  } catch {
+    return res.status(500).json({
+      message: "Could not load this public profile",
     });
   }
 };

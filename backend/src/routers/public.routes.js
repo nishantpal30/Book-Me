@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   getPublicBusiness,
+  getPublicProfile,
   getPublicSlots,
   requestPublicBookingOtp,
   verifyPublicBookingOtp,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get("/booking/status", getBookingStatus);
 router.post("/booking/payment/cancel", cancelPublicBookingPayment);
 
+router.get("/profile/:slug", getPublicProfile);
 router.get("/:slug", getPublicBusiness);
 
 router.post("/:slug/slots", getPublicSlots);
