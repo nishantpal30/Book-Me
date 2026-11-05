@@ -15,7 +15,7 @@ import adminRoutes from "./routers/admin.routes.js";
 // Middleware 
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://bool-me-neon.vercel.app',
+  'https://book-me-lyart.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 const app = express();

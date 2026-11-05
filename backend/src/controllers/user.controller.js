@@ -29,9 +29,9 @@ export const registerUser = async (req, res) => {
 export const registerOTP = async (req, res) => {
   try {
     const { email } = req.body;
-
+console.log(email);
     const OTPemail = email?.toLowerCase().trim();
-
+console.log(OTPemail)
     if (!OTPemail) {
       return res
         .status(StatusCodes.BAD_REQUEST)
@@ -40,6 +40,7 @@ export const registerOTP = async (req, res) => {
     const registerOTP_Response = await registerOTP_Service({
       userEmail: OTPemail,
     });
+    // console.log(registerOTP_Response)
     return res
       .status(registerOTP_Response.statusCode)
       .json(registerOTP_Response);
