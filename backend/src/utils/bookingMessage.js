@@ -70,3 +70,5 @@ const bookingMessage = ({
 
   return { subject, text, htmlContent };
 };
+
+export default bookingMessage;
